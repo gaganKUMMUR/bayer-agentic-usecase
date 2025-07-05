@@ -52,7 +52,7 @@ supervisor_agent = create_react_agent(
         "You are a supervisor managing three agents:\n"
         "- PDF summarizer\n- Audio summarizer\n- Emailer\n\n"
         "Check the user's request.\n"
-        "If the request includes a PDF and no summary is available yet, call PDF summarizer.\n"
+        "If the request includes a PDF or audio file  and no summary is available yet, call PDF summarizer or audio summarizer accordingly.\n"
         "If a summary is already available and an email address is provided, call the emailer agent."
         "\n\nUse tools one at a time."
     ),
@@ -83,7 +83,7 @@ supervisor_graph = (
 if __name__ == "__main__":
     input_messages = [{
         "role": "user",
-        "content": "summarize the pdf at ./1-s2.0-S2352847821000666-main-2.pdf and email the summary to kummurgagan@gmail.com"
+        "content": "summarize the audio at /Users/gagan/Documents/bayer-agentic-usecase/segment_2_29.72_49.71.mp3 and email the summary to kummurgagan@gmail.com"
     }]
 
     final_state = supervisor_graph.invoke({"messages": input_messages})
