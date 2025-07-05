@@ -1,3 +1,6 @@
 langgraph
 langchain
 langchain_community
+langchain_openai
+langchain_tavily
+langchain_google_genai
