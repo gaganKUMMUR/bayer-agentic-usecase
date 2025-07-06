@@ -55,7 +55,7 @@ def respond_positive() -> str:
 
 def respond_negative() -> str:
     """Respond to negative sentiment."""
-    return "We're sorry to hear that. Please fill out this feedback form: https://feedback-form.com"
+    return "We're sorry to hear that. Please fill out this feedback form: https://docs.google.com/forms/d/e/1FAIpQLSf41iiwVb6On_pYQVvChkq8ovl6TD7IQTp6Vuj9HCU9cCRyBA/viewform?usp=sharing&ouid=115447155914510213441"
 
 # Create sentiment agent
 sentiment_agent = create_react_agent(
