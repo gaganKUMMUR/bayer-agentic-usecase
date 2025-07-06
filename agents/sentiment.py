@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
-
+from rating_store import store_rating, get_average_rating
 from langchain_core.messages import convert_to_messages
 
 def pretty_print_message(message, indent=False):
@@ -48,14 +48,27 @@ def pretty_print_messages(update, last_message=False):
 
 from langgraph.prebuilt import create_react_agent
 
-# Define tools
 def respond_positive() -> str:
-    """Respond to positive sentiment."""
-    return "Thank you for your feedback! Please rate us from 1 to 5 ⭐."
+    """Ask user for rating, then store and show average."""
+    print("🤖: Thank you for your feedback! Please rate us from 1 to 5 stars ⭐")
+    while True:
+        try:
+            user_input = input("👤 Your Rating (1–5): ")
+            rating = int(user_input)
+            if 1 <= rating <= 5:
+                break
+            else:
+                print("⚠️ Please enter a number between 1 and 5.")
+        except ValueError:
+            print("⚠️ Invalid input. Please enter a number.")
+
+    store_rating(rating)
+    avg = get_average_rating()
+    return f"Thanks! You rated us {rating} ⭐. Our current average rating is {avg} ⭐."
 
 def respond_negative() -> str:
     """Respond to negative sentiment."""
-    return "We're sorry to hear that. Please fill out this feedback form: https://docs.google.com/forms/d/e/1FAIpQLSf41iiwVb6On_pYQVvChkq8ovl6TD7IQTp6Vuj9HCU9cCRyBA/viewform?usp=sharing&ouid=115447155914510213441"
+    return "We're sorry to hear that. Please fill out this feedback form: https://feedback-form.com"
 
 # Create sentiment agent
 sentiment_agent = create_react_agent(
@@ -73,7 +86,19 @@ sentiment_agent = create_react_agent(
     name="sentiment_agent",
 )
 
-for chunk in sentiment_agent.stream(
-    {"messages": [{"role": "user", "content": "The customer service was slow and unhelpful"}]}
-):
-    pretty_print_messages(chunk)
+# 🚀 Main loop
+if __name__ == "__main__":
+    while True:
+        user_input = input("👤 Your review (type 'exit' to quit): ")
+        if user_input.lower() == "exit":
+            break
+
+        for chunk in sentiment_agent.stream(
+            {"messages": [{"role": "user", "content": user_input}]}
+        ):
+            pretty_print_messages(chunk)
+
+# for chunk in sentiment_agent.stream(
+#     {"messages": [{"role": "user", "content": "The customer service was slow and unhelpful"}]}
+# ):
+#     pretty_print_messages(chunk)
