@@ -7,6 +7,7 @@ from langgraph.types import Command
 from emailer_agent import email_agent
 from audio_summary_agent import audio_summarizer_agent
 from notes_agent import pdf_summarizer_agent
+from news_agent import news_search_agent
 from llms import load_llm
 from dotenv import load_dotenv
 import os
@@ -43,11 +44,12 @@ def create_handoff_tool(agent_name: str, description: str | None = None):
 assign_to_pdf_agent = create_handoff_tool("pdf_summarizer_agent")
 assign_to_audio_agent = create_handoff_tool("audio_summarizer_agent")
 assign_to_email_agent = create_handoff_tool("email_agent")
+assign_to_news_agent = create_handoff_tool("news_agent")
 
 # --- Supervisor Agent ---
 supervisor_agent = create_react_agent(
     model=llm,
-    tools=[assign_to_pdf_agent, assign_to_audio_agent, assign_to_email_agent],
+    tools=[assign_to_pdf_agent, assign_to_audio_agent, assign_to_email_agent, assign_to_news_agent],
     prompt=(
         "You are a supervisor managing three agents:\n"
         "- PDF summarizer\n- Audio summarizer\n- Emailer\n\n"
@@ -62,14 +64,16 @@ supervisor_agent = create_react_agent(
 # --- LangGraph Wiring ---
 supervisor_graph = (
     StateGraph(MessagesState)
-    .add_node("supervisor", supervisor_agent, destinations=("pdf_summarizer_agent", "audio_summarizer_agent", "email_agent",END))
+    .add_node("supervisor", supervisor_agent, destinations=("pdf_summarizer_agent", "audio_summarizer_agent", "email_agent","news_agent",END))
     .add_node("pdf_summarizer_agent", pdf_summarizer_agent, input_updates=lambda state: {**state,"summary": state["messages"][-1].content})
     .add_node("audio_summarizer_agent", audio_summarizer_agent, input_updates=lambda state:{**state, "summary": state["messages"][-1].content})
+    .add_node("news_agent", news_search_agent, input_updates=lambda state:{**state, "summary": state["messages"][-1].content})
     .add_node("email_agent", email_agent)
     .add_edge(START, "supervisor")
     .add_edge("pdf_summarizer_agent", "supervisor")
     .add_edge("audio_summarizer_agent", "supervisor")
     .add_edge("email_agent", "supervisor")
+    .add_edge("news_agent", "supervisor")
     .compile()
 )
 
@@ -83,8 +87,8 @@ supervisor_graph = (
 if __name__ == "__main__":
     input_messages = [{
         "role": "user",
-        "content": "summarize the audio at /Users/gagan/Documents/bayer-agentic-usecase/segment_2_29.72_49.71.mp3 and email the summary to kummurgagan@gmail.com"
+        "content": "what is the current news"
     }]
 
     final_state = supervisor_graph.invoke({"messages": input_messages})
-    # print_last_assistant_message(final_state)
+    print(final_state)
