@@ -11,9 +11,9 @@ from news_agent import news_search_agent
 from llms import load_llm
 from dotenv import load_dotenv
 import os
-
+ 
 load_dotenv()
-
+ 
 llm = load_llm()
 
 PROMPT="""
@@ -44,7 +44,7 @@ Wait for each tool’s output before proceeding to the next step.\n
 def create_handoff_tool(agent_name: str, description: str | None = None):
     name = f"transfer_to_{agent_name}"
     description = description or f"Send the task to {agent_name}"
-
+ 
     @tool(name, description=description)
     def handoff_tool(
         state: Annotated[MessagesState, InjectedState],
@@ -63,13 +63,13 @@ def create_handoff_tool(agent_name: str, description: str | None = None):
             graph=Command.PARENT,
         )
     return handoff_tool
-
+ 
 # Handoff tools
 assign_to_pdf_agent = create_handoff_tool("pdf_summarizer_agent")
 assign_to_audio_agent = create_handoff_tool("audio_summarizer_agent")
 assign_to_email_agent = create_handoff_tool("email_agent")
 assign_to_news_agent = create_handoff_tool("news_agent")
-
+ 
 # --- Supervisor Agent ---
 supervisor_agent = create_react_agent(
     model=llm,
@@ -79,7 +79,7 @@ supervisor_agent = create_react_agent(
     ),
     name="supervisor"
 )
-
+ 
 # --- LangGraph Wiring ---
 supervisor_graph = (
     StateGraph(MessagesState)
@@ -108,6 +108,6 @@ if __name__ == "__main__":
         "role": "user",
         "content": "what is the current news, summarise it  and then send it to kummurgagan@gmail.com"
     }]
-
+ 
     final_state = supervisor_graph.invoke({"messages": input_messages})
     print(final_state)
