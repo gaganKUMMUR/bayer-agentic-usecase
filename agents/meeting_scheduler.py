@@ -1,19 +1,18 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_openai import ChatOpenAI
+from .llms import load_llm
 from typing import List
 from datetime import datetime, timedelta
 import json
 from langchain_community.tools import tool
 
+llm = load_llm()
+load_dotenv()
 
-CALENDAR_FILE = "./calendar.json"
+CALENDAR_FILE = "agents/calendar.json"
 
 def load_calendar():
     if not os.path.exists(CALENDAR_FILE):
@@ -120,8 +119,8 @@ def tool_suggest_booking_for_boss(time: str) -> str:
     return suggest_booking(time)
 
 
-executor = create_react_agent(
-    model=ChatOpenAI(model="gpt-4.1", temperature=0.3),
+meeting_scheduler_agent = create_react_agent(
+    model=llm,
     tools=[tool_suggest_booking_for_boss],
     prompt="""
 You are a helpful AI assistant responsible for scheduling meetings with the boss.
@@ -131,10 +130,9 @@ Follow these steps:
 2. If the year is not mentioned, take it as 2025. If the duration is not mentioned, take it as 30 min.
 3. Convert the given time and duration to ISO format (e.g., "2025-07-12T11:00:00|60").
 4. Use the `tool_suggest_booking_for_boss` tool only once with the converted time string.
-5. If output you get is  Meeting booked at "time" for "duration" minutes, tell it to user and exit.
-6. If output get is f"⏰ The boss's working hours are from 9 AM to 5 PM. Closest available time is "next_slot"., tell the user the same in layman format and exit, don't ask anything. Do not book amything in this case.
-""",
-    name="meeting_scheduler"
+5. If output you get is  Meeting booked at "time" for "duration" minutes, tell it to user and exit. Or
+6. If output get is f"⏰ The boss's working hours are from 9 AM to 5 PM. Closest available time is "next_slot"., Do not book anything in this case. tell the user the same in layman format without asking any question whether to book.""",
+    name="meeting_scheduler_agent"
 )
 
 

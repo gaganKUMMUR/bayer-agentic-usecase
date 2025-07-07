@@ -9,6 +9,7 @@ from .audio_summary_agent import audio_summarizer_agent
 from .notes_agent import pdf_summarizer_agent
 from .news_agent import news_search_agent
 from .llms import load_llm
+from .meeting_scheduler import meeting_scheduler_agent
 from dotenv import load_dotenv
 import os
  
@@ -17,27 +18,74 @@ load_dotenv()
 llm = load_llm()
 
 PROMPT="""
-You are a supervisor managing four specialized agents:\n
+You are a supervisor managing five specialized agents:\n
+
+\n
+
 - PDF Summarizer: Accepts a PDF document uploaded by the user and returns a clear, concise summary of its contents. Used when no summary exists yet for the uploaded PDF.\n
+
+\n
+
 - Audio Summarizer: Processes uploaded audio files by first transcribing them and then summarizing the spoken content. Used when no summary exists yet for the uploaded audio.\n
+
+\n
+
 - News Fetcher: Gathers the latest relevant news articles based on the user's request or topic of interest, and generates a summarized version. Used when no current news summary is available.\n
+
+\n
+
 - Emailer: Sends any available summary (from PDF, audio, or news) to the user via email. Triggered when an email address is provided and a summary is ready to send.\n
+
+\n
+
+- Meet Scheduler: Interprets the user’s request to schedule a meeting, extracts and formats the desired date and time, checks the boss’s availability via the calendar, and either schedules the meeting or replies with the next available slot if the requested time is unavailable.\n
+
+\n
 
 Your job is to analyze the user's request and orchestrate the correct sequence of tool usage, using only one tool at a time.\n
 
+\n
+
+TO SEND EMAIL USE EMAILER AGENT and write message body (mostly the summary) and email subject accordingly
+
+
 **Workflow Logic:**\n
+
+\n
+
 1. If the user uploads a PDF file and no summary exists yet, call the **PDF Summarizer**.\n
+
 2. If the user uploads an audio file and no summary exists yet, call the **Audio Summarizer**.\n
+
 3. If the user requests news content and it is not yet available, call the **News Fetcher**.\n
+
 4. If a summary (from PDF, audio, or news) already exists **and** the user provides an email address, call the **Emailer** to send the summary.\n
+
 5. If the user requests to email the news and the news summary is already available, call the **Emailer**.\n
 
+6. If the user asks to schedule a meeting:\n
+
+   - Use the **Meet Scheduler** to extract the requested date and time.\n
+
+   - Check the boss's calendar for availability.\n
+
+   - If the requested slot is free, schedule the meeting.\n
+
+   - If the slot is busy, inform the user that the boss is unavailable and suggest the next available time.\n
+
+\n
+
 Always:\n
+
 - Use only one tool per step.\n
+
 - Re-evaluate the next action based on updated context after each tool finishes.\n
+
 - Do not skip steps or make assumptions. Only act based on what's available in the current state.\n
 
-Wait for each tool's output before proceeding to the next step.\n
+\n
+
+Wait for each tool’s output before proceeding to the next step.\n
 
 """
 
@@ -69,11 +117,12 @@ assign_to_pdf_agent = create_handoff_tool("pdf_summarizer_agent")
 assign_to_audio_agent = create_handoff_tool("audio_summarizer_agent")
 assign_to_email_agent = create_handoff_tool("email_agent")
 assign_to_news_agent = create_handoff_tool("news_agent")
+assign_to_meeting_scheduler_agent = create_handoff_tool("meeting_scheduler_agent")
  
 # --- Supervisor Agent ---
 supervisor_agent = create_react_agent(
     model=llm,
-    tools=[assign_to_pdf_agent, assign_to_audio_agent, assign_to_email_agent, assign_to_news_agent],
+    tools=[assign_to_pdf_agent, assign_to_audio_agent, assign_to_email_agent, assign_to_news_agent, assign_to_meeting_scheduler_agent],
     prompt=(
         PROMPT
     ),
@@ -83,16 +132,18 @@ supervisor_agent = create_react_agent(
 # --- LangGraph Wiring ---
 supervisor_graph = (
     StateGraph(MessagesState)
-    .add_node("supervisor", supervisor_agent, destinations=("pdf_summarizer_agent", "audio_summarizer_agent", "email_agent","news_agent",END))
+    .add_node("supervisor", supervisor_agent, destinations=("pdf_summarizer_agent", "audio_summarizer_agent", "email_agent","news_agent", "meeting_scheduler_agent",END))
     .add_node("pdf_summarizer_agent", pdf_summarizer_agent, input_updates=lambda state: {**state,"summary": state["messages"][-1].content})
     .add_node("audio_summarizer_agent", audio_summarizer_agent, input_updates=lambda state:{**state, "summary": state["messages"][-1].content})
-    .add_node("news_agent", news_search_agent, input_updates=lambda state:{**state, "news": state["messages"][-1].content})
+    .add_node("news_agent", news_search_agent, input_updates=lambda state:{**state, "news": sta["messages"][-1].content})
+    .add_node("meeting_scheduler_agent", meeting_scheduler_agent, input_updates=lambda state:{**state, "meeting_status": state["messages"][-1].content})
     .add_node("email_agent", email_agent)
     .add_edge(START, "supervisor")
     .add_edge("pdf_summarizer_agent", "supervisor")
     .add_edge("audio_summarizer_agent", "supervisor")
     .add_edge("email_agent", "supervisor")
     .add_edge("news_agent", "supervisor")
+    .add_edge("meeting_scheduler_agent", "supervisor")
     .compile()
 )
 
@@ -106,7 +157,7 @@ with open("graph.png","wb") as file:
 if __name__ == "__main__":
     input_messages = [{
         "role": "user",
-        "content": "what is the current news, summarise it  and then send it to kummurgagan@gmail.com"
+        "content": "Schedule a meeting on 15th of july from from 9:30 AM for 1 hour"
     }]
  
     final_state = supervisor_graph.invoke({"messages": input_messages})

@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, Form
 from agents.supervisor_agent import supervisor_graph  # Import your graph
 from dotenv import load_dotenv 
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
 
 load_dotenv()
@@ -24,10 +25,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @app.post("/supervisor")
 async def run_supervisor(
     content: str = Form(...),                 
-    file: UploadFile = File(None),           
+    file: Optional[UploadFile] = File(None),  # Make file optional
 ):
     file_path = None
-    if file:
+    # FastAPI sends "" (empty string) if file field is left empty in docs UI
+    if isinstance(file, UploadFile) and file.filename:
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
