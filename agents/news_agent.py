@@ -1,7 +1,7 @@
 from langgraph.prebuilt import create_react_agent
 from langchain_tavily import TavilySearch
 from dotenv import load_dotenv
-from llms import load_llm
+from .llms import load_llm
 load_dotenv()
 web_search = TavilySearch()
 

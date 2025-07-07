@@ -1,19 +1,31 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from supervisor_agent import supervisor_graph  # Import your graph
+from agents.supervisor_agent import supervisor_graph  # Import your graph
+from dotenv import load_dotenv 
+from fastapi.middleware.cors import CORSMiddleware
+
+
+load_dotenv()
 
 import shutil
 import os
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.post("/supervisor")
 async def run_supervisor(
-    content: str = Form(...),                 # user's instruction (text command)
-    file: UploadFile = File(None),            # optional file
+    content: str = Form(...),                 
+    file: str = None,           
 ):
-    # Handle file if present (save it temporarily)
     file_path = None
     if file:
         file_path = os.path.join(UPLOAD_DIR, file.filename)

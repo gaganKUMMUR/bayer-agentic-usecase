@@ -5,7 +5,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.document_loaders import PyPDFLoader
 from dotenv import load_dotenv
 import os
-from llms import load_llm
+from .llms import load_llm
 
 load_dotenv()
 

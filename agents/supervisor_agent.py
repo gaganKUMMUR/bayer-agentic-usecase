@@ -4,11 +4,11 @@ from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.prebuilt import create_react_agent, InjectedState
 from langchain_core.tools import tool, InjectedToolCallId
 from langgraph.types import Command
-from emailer_agent import email_agent
-from audio_summary_agent import audio_summarizer_agent
-from notes_agent import pdf_summarizer_agent
-from news_agent import news_search_agent
-from llms import load_llm
+from .emailer_agent import email_agent
+from .audio_summary_agent import audio_summarizer_agent
+from .notes_agent import pdf_summarizer_agent
+from .news_agent import news_search_agent
+from .llms import load_llm
 from dotenv import load_dotenv
 import os
  
@@ -37,7 +37,7 @@ Always:\n
 - Re-evaluate the next action based on updated context after each tool finishes.\n
 - Do not skip steps or make assumptions. Only act based on what's available in the current state.\n
 
-Wait for each tool’s output before proceeding to the next step.\n
+Wait for each tool's output before proceeding to the next step.\n
 
 """
 
