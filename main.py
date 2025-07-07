@@ -24,7 +24,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @app.post("/supervisor")
 async def run_supervisor(
     content: str = Form(...),                 
-    file: str = None,           
+    file: UploadFile = File(None),           
 ):
     file_path = None
     if file:
