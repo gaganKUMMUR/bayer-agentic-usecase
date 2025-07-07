@@ -13,7 +13,7 @@ import json
 from langchain_community.tools import tool
 
 
-CALENDAR_FILE = "calendar.json"
+CALENDAR_FILE = "./calendar.json"
 
 def load_calendar():
     if not os.path.exists(CALENDAR_FILE):
@@ -138,11 +138,6 @@ Follow these steps:
 )
 
 
-user_input = input("You: ")
-
-result = executor.invoke(
-    {"messages": user_input},
-)
-
-ai_message = result["messages"][-1]
-print("Agent:", ai_message.content)
+if __name__ == "__main__":
+    messages = executor.invoke({'messages':'Schedule a meeting on 15th of july from from 9:30 AM for 1 hour'})
+    print(messages)
