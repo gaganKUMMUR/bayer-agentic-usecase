@@ -11,7 +11,7 @@ load_dotenv()
 
 llm = load_llm()
 
-@tool
+# @tool
 def emailer_tool(receiver_address: str, message_body: str, email_subject: str):
     """email the reciver with the given message"""
     try:
@@ -19,6 +19,7 @@ def emailer_tool(receiver_address: str, message_body: str, email_subject: str):
         email_port = int(os.getenv("EMAIL_PORT"))
         email_user = os.getenv("EMAIL_USER")
         email_pass = os.getenv("EMAIL_PASS")
+        print(email_host, email_pass, email_port, email_user)
         msg = MIMEMultipart()
         msg["From"] = email_user
         msg["To"] = receiver_address
@@ -46,3 +47,7 @@ email_agent = create_react_agent(
     ),
     name="email_agent"
 )
+
+
+if __name__ == "__main__":
+    emailer_tool("kummurgagan@gmail.com", "hello", "hi there")

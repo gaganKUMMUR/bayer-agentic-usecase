@@ -16,6 +16,30 @@ load_dotenv()
 
 llm = load_llm()
 
+PROMPT="""
+You are a supervisor managing four specialized agents:\n
+- PDF Summarizer: Accepts a PDF document uploaded by the user and returns a clear, concise summary of its contents. Used when no summary exists yet for the uploaded PDF.\n
+- Audio Summarizer: Processes uploaded audio files by first transcribing them and then summarizing the spoken content. Used when no summary exists yet for the uploaded audio.\n
+- News Fetcher: Gathers the latest relevant news articles based on the user's request or topic of interest, and generates a summarized version. Used when no current news summary is available.\n
+- Emailer: Sends any available summary (from PDF, audio, or news) to the user via email. Triggered when an email address is provided and a summary is ready to send.\n
+
+Your job is to analyze the user's request and orchestrate the correct sequence of tool usage, using only one tool at a time.\n
+
+**Workflow Logic:**\n
+1. If the user uploads a PDF file and no summary exists yet, call the **PDF Summarizer**.\n
+2. If the user uploads an audio file and no summary exists yet, call the **Audio Summarizer**.\n
+3. If the user requests news content and it is not yet available, call the **News Fetcher**.\n
+4. If a summary (from PDF, audio, or news) already exists **and** the user provides an email address, call the **Emailer** to send the summary.\n
+5. If the user requests to email the news and the news summary is already available, call the **Emailer**.\n
+
+Always:\n
+- Use only one tool per step.\n
+- Re-evaluate the next action based on updated context after each tool finishes.\n
+- Do not skip steps or make assumptions. Only act based on what's available in the current state.\n
+
+Wait for each tool’s output before proceeding to the next step.\n
+
+"""
 
 def create_handoff_tool(agent_name: str, description: str | None = None):
     name = f"transfer_to_{agent_name}"
@@ -51,12 +75,7 @@ supervisor_agent = create_react_agent(
     model=llm,
     tools=[assign_to_pdf_agent, assign_to_audio_agent, assign_to_email_agent, assign_to_news_agent],
     prompt=(
-        "You are a supervisor managing three agents:\n"
-        "- PDF summarizer\n- Audio summarizer\n- Emailer\n\n"
-        "Check the user's request.\n"
-        "If the request includes a PDF or audio file  and no summary is available yet, call PDF summarizer or audio summarizer accordingly.\n"
-        "If a summary is already available and an email address is provided, call the emailer agent."
-        "\n\nUse tools one at a time."
+        PROMPT
     ),
     name="supervisor"
 )
@@ -67,7 +86,7 @@ supervisor_graph = (
     .add_node("supervisor", supervisor_agent, destinations=("pdf_summarizer_agent", "audio_summarizer_agent", "email_agent","news_agent",END))
     .add_node("pdf_summarizer_agent", pdf_summarizer_agent, input_updates=lambda state: {**state,"summary": state["messages"][-1].content})
     .add_node("audio_summarizer_agent", audio_summarizer_agent, input_updates=lambda state:{**state, "summary": state["messages"][-1].content})
-    .add_node("news_agent", news_search_agent, input_updates=lambda state:{**state, "summary": state["messages"][-1].content})
+    .add_node("news_agent", news_search_agent, input_updates=lambda state:{**state, "news": state["messages"][-1].content})
     .add_node("email_agent", email_agent)
     .add_edge(START, "supervisor")
     .add_edge("pdf_summarizer_agent", "supervisor")
@@ -78,16 +97,16 @@ supervisor_graph = (
 )
 
 
-# png_bytes = supervisor_graph.get_graph().draw_mermaid_png()
-# with open("graph.png","wb") as file:
-#     file.write(png_bytes)
+png_bytes = supervisor_graph.get_graph().draw_mermaid_png()
+with open("graph.png","wb") as file:
+    file.write(png_bytes)
 
 
 # --- Run Once ---
 if __name__ == "__main__":
     input_messages = [{
         "role": "user",
-        "content": "what is the current news"
+        "content": "what is the current news, summarise it  and then send it to kummurgagan@gmail.com"
     }]
 
     final_state = supervisor_graph.invoke({"messages": input_messages})
