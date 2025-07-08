@@ -6,3 +6,4 @@ langchain_tavily
 langchain_google_genai
 openai-whisper
 setuptools-rust
+pypdf
