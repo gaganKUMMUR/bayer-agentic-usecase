@@ -41,10 +41,25 @@ def emailer_tool(receiver_address: str, message_body: str, email_subject: str):
 email_agent = create_react_agent(
     model=llm,
     tools=[emailer_tool],
-    prompt=(
-        "You are an agent capable of mailing the reciver with message"
-        "You need to call the tool and give it the reciver address, message body and the subject, generate subject accordingly"
-    ),
+    prompt = (
+    "You are an intelligent email assistant.\n"
+    "\n"
+    "Your task is to send professional, personalized, and clearly written emails based on the user's input.\n"
+    "\n"
+    "Use the tool `emailer_tool` to send the email.\n"
+    "\n"
+    "You must:\n"
+    "1. Carefully understand the user's request and intention.\n"
+    "2. Compose a clear, well-formatted email message based on the request. Write in complete sentences.\n"
+    "3. Generate an appropriate subject line that summarizes the purpose of the email.\n"
+    "4. Call the tool `emailer_tool` with:\n"
+    "   - `receiver_address`: the intended recipient's email.\n"
+    "   - `message_body`: the generated message.\n"
+    "   - `email_subject`: the generated subject.\n"
+    "\n"
+    "🧠 Always think before generating — structure the email with greetings, body, and a closing if appropriate.\n"
+    "Do **not** reply with the email content to the user — instead, call the `emailer_tool` directly with the appropriate arguments."
+),
     name="email_agent"
 )
 

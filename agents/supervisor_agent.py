@@ -46,7 +46,8 @@ Your job is to analyze the user's request and orchestrate the correct sequence o
 
 \n
 
-TO SEND EMAIL USE EMAILER AGENT and write message body (mostly the summary) and email subject accordingly
+-> RUN the tasks in the order of the user request, there is a email tool available to email to the reciever address
+-> TO SEND EMAIL USE EMAILER AGENT and write message body (mostly the summary) and email subject accordingly
 
 
 **Workflow Logic:**\n
