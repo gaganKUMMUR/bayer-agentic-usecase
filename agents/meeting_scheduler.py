@@ -1,18 +1,18 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_openai import ChatOpenAI
+from .llms import load_llm
 from typing import List
 from datetime import datetime, timedelta
 import json
+from langchain_community.tools import tool
 
-pending_suggestion = {} 
-CALENDAR_FILE = "calendar.json"
+llm = load_llm()
+load_dotenv()
+
+CALENDAR_FILE = "agents/calendar.json"
 
 def load_calendar():
     if not os.path.exists(CALENDAR_FILE):
@@ -97,9 +97,8 @@ def suggest_booking(user_input: str) -> str:
 
         if hour < 9 or hour >= 17 or (duration > (17-hour)*60 - proposed_start.minute):
             next_slot = find_next_available_slot(time, duration)
-            pending_suggestion["suggested"] = {"time": next_slot, "duration": duration}
             return (f"⏰ The boss's working hours are from 9 AM to 5 PM.\n"
-                    f"Closest available time is {next_slot}. Would you like to book it?")
+                    f"Closest available time is {next_slot}.")
 
         if is_slot_available(time, duration):
             return book_meeting(time, duration)
@@ -107,65 +106,36 @@ def suggest_booking(user_input: str) -> str:
             next_slot = find_next_available_slot(time, duration)
             if "No slots" in next_slot:
                 return "Boss is not available. Please try another day."
-            pending_suggestion["suggested"] = {"time": next_slot, "duration": duration}
             return (f"❌ Boss has another meeting at that time.\n"
-                    f"📌 Nearest available time is {next_slot}. Should I schedule it?")
+                    f"📌 Nearest available time is {next_slot}.")
     except Exception:
+        print("yes")
         return "❗ Invalid input. Use format like '2025-07-12T11:00:00|60' (datetime|duration)."
 
 
-def confirm_booking(confirm: str) -> str:
-    if confirm.lower() in ["yes", "book", "confirm"] and "suggested" in pending_suggestion:
-        suggestion = pending_suggestion.pop("suggested")
-        return book_meeting(suggestion["time"], suggestion["duration"])
-    return "No action taken. Please confirm with 'Yes' to book."
-
-
+@tool
 def tool_suggest_booking_for_boss(time: str) -> str:
     """Suggests a meeting time or returns the nearest available slot if not free."""
     return suggest_booking(time)
 
 
-def tool_confirm_booking(confirm: str) -> str:
-    """Confirms the previously suggested booking if user agrees."""
-    return confirm_booking(confirm)
-
-
-executor = create_react_agent(
-    model=ChatOpenAI(model="gpt-4.1", temperature=0),
-    tools=[tool_suggest_booking_for_boss, tool_confirm_booking],
+meeting_scheduler_agent = create_react_agent(
+    model=llm,
+    tools=[tool_suggest_booking_for_boss],
     prompt="""
 You are a helpful AI assistant responsible for scheduling meetings with the boss.
 
 Follow these steps:
 1. Accept input like "11am on 12 July 2025" or "9am on 13 July for 1 hour".
-2. Convert the given time and duration to ISO format (e.g., "2025-07-12T11:00:00|60").
-3. Use the `tool_suggest_booking_for_boss` tool with the converted time string.
-4. If available, confirm the booking directly and return it.
-5. If not available, suggest the next free slot and ask for user confirmation.
-6. When the user replies with "yes", "confirm", or "book", use the `tool_confirm_booking` tool and confirm booking.
-7. If the user suggest some other timing, again check if the slot is available, if available use `tool_confirm_booking` tool otherwise suggest next available option.
-""",
-    name="meeting_scheduler"
+2. If the year is not mentioned, take it as 2025. If the duration is not mentioned, take it as 30 min.
+3. Convert the given time and duration to ISO format (e.g., "2025-07-12T11:00:00|60").
+4. Use the `tool_suggest_booking_for_boss` tool only once with the converted time string.
+5. If output you get is  Meeting booked at "time" for "duration" minutes, tell it to user and exit. Or
+6. If output get is f"⏰ The boss's working hours are from 9 AM to 5 PM. Closest available time is "next_slot"., Do not book anything in this case. tell the user the same in layman format without asking any question whether to book.""",
+    name="meeting_scheduler_agent"
 )
 
 
 if __name__ == "__main__":
-    history = []
-    print("📆 Meeting Scheduler Agent is ready. Type 'exit' to stop.")
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() in ["exit", "quit"]:
-            print("Goodbye!")
-            break
-        history.append(HumanMessage(content=user_input))
-
-        result = executor.invoke(
-            {"messages": history},
-            config=RunnableConfig(configurable={"recursion_limit": 20})
-        )
-
-        ai_message = result["messages"][-1]
-        history.append(ai_message)
-
-        print("Agent:", ai_message.content)
+    messages = executor.invoke({'messages':'Schedule a meeting on 15th of july from from 9:30 AM for 1 hour'})
+    print(messages)
