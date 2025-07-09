@@ -1,1 +1,1 @@
-# bayer-agentic-usecase.
+# bayer-agentic-usecase
